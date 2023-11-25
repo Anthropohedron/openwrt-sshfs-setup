@@ -48,42 +48,83 @@ if test "$(uname)" = Darwin
 then
 	TIMEOUT=30
 fi
-UNACCEPTABLE=true
-while $UNACCEPTABLE
-do
-	printf '%s [%s]: ' \
-		'Enter the device IP address or its resolvable hostname' \
-		"$DEV"
-	read IP
-	if test -z "$IP"
-	then
-		IP="$DEV"
-	fi
-	if ping -W $TIMEOUT -c 1 "$IP" >/dev/null 2>&1
-	then
-		UNACCEPTABLE=false
-	else
-		echo "Cannot ping '$IP' within 30ms"
-	fi
-done
+
+
+if ! ping -W $TIMEOUT -c 1 "$DEV" >/dev/null 2>&1
+then
+	UNACCEPTABLE=true
+	while $UNACCEPTABLE
+	do
+		printf '%s: ' \
+			'Enter the device IP address or its resolvable hostname'
+		read IP
+		if ping -W $TIMEOUT -c 1 "$IP" >/dev/null 2>&1
+		then
+			UNACCEPTABLE=false
+		else
+			echo "Cannot ping '$IP' within 30ms"
+		fi
+	done
+
+	cat << EOF
+
+The following line can be added to /etc/hosts to make things more convenient:
+
+$IP	$DEV
+
+It can be added with the following command, which may prompt for sudo
+credentials:
+
+printf '%s\t%s\n' "$IP" "$DEV" | sudo tee -a /etc/hosts >/dev/null
+
+EOF
+	printf '%s ' 'Would you like to do so? [Yn]'
+	read confirm
+	case "$confirm" in
+		y*|Y*|"")
+			if printf '%s\t%s\n' "$IP" "$DEV" | sudo tee -a /etc/hosts >/dev/null
+			then
+				IP="$DEV"
+			fi
+			;;
+		*) ;;
+	esac
+fi
 
 UIDGID=$(id | sed 's/^\(uid=[0-9]*\)\(([^)]*)\)\?\s\s*\(gid=[0-9]*\)\(([^)]*)\)\s.*$/\1,\3/')
 while ! grep ':/etc/config\s\s*'"$DIR/$DEV"'\s\s*sshfs\s' /etc/fstab
 do
 	cat << EOF
-Add the following line to your /etc/fstab:
+
+The following line must be added to your /etc/fstab:
 
 root@$IP:/etc/config $DIR/$DEV sshfs defaults,user,$UIDGID 0 0
 
+It can be added with the following command, which may prompt for sudo
+credentials:
+
+printf 'root@%s:/etc/config %s/%s sshfs defaults,user,%s 0 0\n' \
+	"$IP" "$DIR" "$DEV" "$UIDGID" | sudo tee -a /etc/fstab >/dev/null
+
 EOF
-	printf '%s: ' 'Press enter when done'
-	read
+	printf '%s ' 'Would you like to do so? If not, please add it manually now. [Yn]'
+	read confirm
+	case "$confirm" in
+		y*|Y*|"")
+			if printf 'root@%s:/etc/config %s/%s sshfs defaults,user,%s 0 0\n' \
+				"$IP" "$DIR" "$DEV" "$UIDGID" | sudo tee -a /etc/fstab >/dev/null
+			then
+				IP="$DEV"
+			fi
+			;;
+		*) ;;
+	esac
 done
 
 mkdir "$DIR/$DEV" && \
 	touch "$DIR/$DEV/.unmounted" && \
 	mount "$DIR/$DEV" && \
-	git init --bare "$DIR/GIT/$DEV" && \
+	git init "$DIR/GIT/$DEV" && \
 	ln -s "../GIT/$DEV/.git" "$DIR/$DEV" && \
 	git -C "$DIR/$DEV" add . && \
 	git -C "$DIR/$DEV" commit -a -m "initial commit"
