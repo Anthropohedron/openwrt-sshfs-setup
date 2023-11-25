@@ -1,0 +1,90 @@
+#!/bin/sh
+
+usage () {
+	if test $# -gt 0
+	then
+		printf '%s\n' "$*" >&2
+	fi
+	echo "Usage: $0" >&2
+	exit 1
+}
+
+if test $# -gt 0
+then
+	usage
+fi
+if ! command -v ping id git >/dev/null 2>&1
+then
+	usage Some required commands are not available
+fi
+
+DIR="$(dirname "$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)")"
+
+instructions () {
+	cat << "EOF"
+Device name must start with a lowercase letter and can only contain
+lowercase letters, numbers, underscores, and dashes.
+
+EOF
+}
+
+UNACCEPTABLE=true
+while $UNACCEPTABLE
+do
+	instructions
+	printf '%s: ' 'Enter the new device name'
+	read DEV
+	if printf '%s' "$DEV" | grep '^[a-z][-_a-z0-9]\+$' >/dev/null && \
+		test ! -e "$DIR/$DEV"
+	then
+		UNACCEPTABLE=false
+	else
+		printf '\n'
+	fi
+done
+
+TIMEOUT=0.03
+if test "$(uname)" = Darwin
+then
+	TIMEOUT=30
+fi
+UNACCEPTABLE=true
+while $UNACCEPTABLE
+do
+	printf '%s [%s]: ' \
+		'Enter the device IP address or its resolvable hostname' \
+		"$DEV"
+	read IP
+	if test -z "$IP"
+	then
+		IP="$DEV"
+	fi
+	if ping -W $TIMEOUT -c 1 "$IP" >/dev/null 2>&1
+	then
+		UNACCEPTABLE=false
+	else
+		echo "Cannot ping '$IP' within 30ms"
+	fi
+done
+
+UIDGID=$(id | sed 's/^\(uid=[0-9]*\)\(([^)]*)\)\?\s\s*\(gid=[0-9]*\)\(([^)]*)\)\s.*$/\1,\3/')
+while ! grep ':/etc/config\s\s*'"$DIR/$DEV"'\s\s*sshfs\s' /etc/fstab
+do
+	cat << EOF
+Add the following line to your /etc/fstab:
+
+root@$IP:/etc/config $DIR/$DEV sshfs defaults,user,$UIDGID 0 0
+
+EOF
+	printf '%s: ' 'Press enter when done'
+	read
+done
+
+mkdir "$DIR/$DEV" && \
+	touch "$DIR/$DEV/.unmounted" && \
+	mount "$DIR/$DEV" && \
+	git init --bare "$DIR/GIT/$DEV" && \
+	ln -s "../GIT/$DEV/.git" "$DIR/$DEV" && \
+	git -C "$DIR/$DEV" add . && \
+	git -C "$DIR/$DEV" commit -a -m "initial commit"
+

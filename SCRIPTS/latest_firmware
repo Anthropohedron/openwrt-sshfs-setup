@@ -1,0 +1,88 @@
+#!/bin/sh
+
+usage () {
+	if test $# -gt 0
+	then
+		printf '%s\n' "$*" >&2
+	fi
+	echo "Usage: $0 <firmware.json>" >&2
+	exit 1
+}
+
+if test $# -ne 1
+then
+	usage
+elif test ! -r "$1"
+then
+	usage Firmware file "'$1'" is not readable
+elif ! command -v jq >/dev/null
+then
+	usage Cannot find jq
+elif ! command -v curl >/dev/null
+then
+	usage Cannot find curl
+fi
+
+BASEURL="https://sysupgrade.openwrt.org"
+BUILDURL="$BASEURL/api/v1/build"
+BINURL="$BASEURL/store"
+BODY=$(mktemp)
+OUTPUT=$(mktemp)
+trap "rm -f $BODY $OUTPUT" EXIT
+
+VERSION=$(curl -s -S https://firmware-selector.openwrt.org/config.js |\
+	sed -n 's/^\s*default_version:\s*"\([^"]*\)".*$/\1/p')
+jq '{
+	defaults: "",
+	diff_packages: true,
+	client: "curl",
+	version: "'$VERSION'"
+} + .' "$1" > $BODY
+
+curl -s -S -X POST -d @$BODY -H 'Content-Type: application/json' \
+	"$BUILDURL" -o $OUTPUT
+
+detail="$(jq -r .detail $OUTPUT)"
+status="$(jq -r .status $OUTPUT)"
+
+if test "$detail" != "done" -o "$status" != 200
+then
+	req="$(jq -r .request_hash $OUTPUT)"
+	if test "$detail" != queued -o \
+		"$status" != 202 -o \
+		"$req" = null -o -z "$req"
+	then
+		echo "Unexpected build output:" >&2
+		jq . $OUTPUT >&2
+		exit 2
+	fi
+
+	while test "$(jq -r .status $OUTPUT)" = 202
+	do
+		printf '.'
+		sleep 5
+		curl -s -S -X GET "$BUILDURL/$req" -o $OUTPUT
+	done
+
+	printf '\n'
+fi
+
+if test "$(jq -r .status $OUTPUT)" != 200
+then
+	echo "Build error: $(jq -r .status $OUTPUT)" >&2
+	jq . $OUTPUT >&2
+	exit 3
+fi
+
+FNAME="$(jq -r '.images | map(select(.type == "sysupgrade")) | .[0].name' $OUTPUT)"
+BINDIR="$(jq -r .bin_dir $OUTPUT)"
+
+if test -z "$FNAME" -o -z "$BINDIR"
+then
+	echo "Missing information in build output" >&2
+	jq . "$OUTPUT" >&2
+	exit 4
+fi
+
+printf '%s/%s/%s\n' "$BINURL" "$BINDIR" "$FNAME"
+
