@@ -1,0 +1,4 @@
+/[A-Za-z]*
+!/Makefile
+!/README.md
+!/SCRIPTS
