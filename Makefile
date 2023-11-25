@@ -4,7 +4,7 @@ DEVICES:=$(wildcard [a-z]*)
 MOUNTED:=$(subst /,,$(dir $(wildcard [a-z]*/.git)))
 NOTMOUNTED:=$(subst /,,$(dir $(wildcard [a-z]*/.unmounted)))
 
-.PHONY: mount umount
+.PHONY: mount umount mounted ssh versions new
 
 mount: $(addsuffix /.git,${NOTMOUNTED})
 
