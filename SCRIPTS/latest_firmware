@@ -33,8 +33,7 @@ trap "rm -f $BODY $OUTPUT" EXIT
 VERSION=$(curl -s -S https://firmware-selector.openwrt.org/config.js |\
 	sed -n 's/^\s*default_version:\s*"\([^"]*\)".*$/\1/p')
 jq '{
-	defaults: "",
-	diff_packages: true,
+	diff_packages: false,
 	client: "curl",
 	version: "'$VERSION'"
 } + .' "$1" > $BODY
