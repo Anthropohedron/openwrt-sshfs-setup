@@ -115,4 +115,7 @@ If you, like me, prefer to build a custom firmware image (e.g. to include some e
 - client: `"curl"`
 - version: The default (latest) version according to the [Firmware Selector](https://firmware-selector.openwrt.org/)
 
-Any of these fields can be overridden in the supplied JSON file. Note that you _must_ supply the `profile` and `target` fields, at a minimum. I recommend keeping a `firmware.json` file for the purpose in devices' `/etc/config` (and therefore in their git repos).
+Any of these fields can be overridden in the supplied JSON file. I recommend keeping a `firmware.json` file for the purpose in devices' `/etc/config` (and therefore in their git repos).
+
+Note that you _must_ supply values for the `profile` and `target` fields, at a minimum. The `profile` value can be found in the device's `/etc/board.json` file in the `.model.id` field, replacing any comma `,` (there is probably a comma) with an underscore `_`. The `target` value can be found in the device's `/etc/openwrt_release` file as the value of `DISTRIB_TARGET`.
+
