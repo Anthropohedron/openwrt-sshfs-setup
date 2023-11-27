@@ -24,7 +24,7 @@ The basic idea is to edit device configuration on a \*nix (Linux, in my case) bo
 1. You need a \*nix box of some sort with sshfs, GNU make, and git installed. On Debian-derived Linux distributions, including Ubuntu, that's as simple as `sudo apt-get install sshfs git make` and it's done. Other distributions or \*nix systems will vary.
 2. You need the `openssh-sftp-server` package installed on all of your OpenWRT devices; I recommend using the [Firmware Selector](https://firmware-selector.openwrt.org/) to build a custom image with the package included in it.
 3. You don't strictly _need_ an [ssh authorized key](https://openwrt.org/docs/guide-user/security/dropbear.public-key.auth) on your OpenWRT devices, but I strongly recommend it; this is something of a pain without it.
-4. To use the [`latest_firmware`](SCRIPTS/latest_firmware) script, you need `jq` and `curl` installed on your \*nix box.
+4. To use the [`custom_firmware`](SCRIPTS/custom_firmware) script, you need `jq` and `curl` installed on your \*nix box.
 
 If you use vim, I highly recommend the [vim-uci](https://github.com/cmcaine/vim-uci) plugin to get syntax highlighting for the config files. Note that you will need to inform vim that the `filetype` is `uci`, either with a modeline or an autocommand.
 
@@ -109,7 +109,7 @@ You can get the devices' OpenWRT version number via ssh with `make versions`.
 
 ## Advanced
 
-If you, like me, prefer to build a custom firmware image (e.g. to include some extra packages and possibly remove some you don't need), the [`latest_firmware`](SCRIPTS/latest_firmware) script will be helpful. It takes a JSON file which conforms to the [`BuildRequest` schema](https://sysupgrade.openwrt.org/ui/#/model-BuildRequest) and produces an URL to download a sysupgrade firmware image suitable for installing with `sysupgrade -c -u`. The script supplies a few default values for the build request, including:
+If you, like me, prefer to build a custom firmware image (e.g. to include some extra packages and possibly remove some you don't need), the [`custom_firmware`](SCRIPTS/custom_firmware) script will be helpful. It takes a JSON file which conforms to the [`BuildRequest` schema](https://sysupgrade.openwrt.org/ui/#/model-BuildRequest) and produces an URL to download a sysupgrade firmware image suitable for installing with `sysupgrade -c -u`. The script supplies a few default values for the build request, including:
 
 - diff_packages: `false`, which means that any packages given are _in addition to_ the default for the device
 - client: `"curl"`
