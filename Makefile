@@ -22,6 +22,12 @@ mounted:
 		printf ' %s\n' $$d ||\
 		printf '+%s\n' $$d ; done
 
+status:
+	@for d in ${DEVICES}; do \
+		test -f $$d/.unmounted &&\
+		printf 'not mounted: %s\n' $$d ||\
+		(printf '\n##### %s #####\n' $$d && git -C $$d status || true) ; done
+
 ssh:
 	@test -n "${TODO}" || ( echo '*** You must provide TODO ***' && false )
 	@for d in ${DEVICES}; do ssh $$d ${TODO} | sed 's/^/'$$d': /' ; done
