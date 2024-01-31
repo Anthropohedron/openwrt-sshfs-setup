@@ -4,7 +4,7 @@ DEVICES:=$(wildcard [a-z]*)
 MOUNTED:=$(subst /,,$(dir $(wildcard [a-z]*/.git)))
 NOTMOUNTED:=$(subst /,,$(dir $(wildcard [a-z]*/.unmounted)))
 
-.PHONY: mount umount mounted ssh versions new
+.PHONY: mount umount mounted ssh versions new reload_%
 
 mount: $(addsuffix /.git,${NOTMOUNTED})
 
@@ -34,6 +34,9 @@ ssh:
 
 versions: TODO = grep VERSION= /etc/os-release
 versions: ssh
+
+reload_%:
+	@make TODO="service $* reload" ssh
 
 new:
 	./SCRIPTS/new_device
