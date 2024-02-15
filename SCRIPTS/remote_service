@@ -1,0 +1,81 @@
+#!/bin/sh
+
+usage () {
+	if test $# -gt 0
+	then
+		printf '%s\n' "$*" >&2
+	fi
+	cat >&2 <<EOF
+Usage: $0 <host[,host...]> <command> <service[,service...]>
+where <command> is one of
+	reload
+	restart
+	status
+	start
+	stop
+EOF
+	exit 1
+}
+
+commasplit () {
+	printf '%s' "$1" | tr -d '[:blank:]' | tr ',' ' '
+}
+
+if test $# -ne 3
+then
+	usage
+fi
+
+COMMAND="$2"
+case "$COMMAND" in
+	reload|restart|status|start|stop) ;;
+	*) usage Unknown command: "'$COMMAND'" ;;
+esac
+
+DEVICES="$(cd "$(dirname "$0")/.." >/dev/null 2>&1 && echo [a-z]*)"
+HOSTS="$(commasplit "$1")"
+
+if test -z "$HOSTS"
+then
+	usage No 'host(s)' given
+fi
+
+ANYNOTFOUND=false
+for host in $HOSTS
+do
+	NOTFOUND=true
+	for device in $DEVICES
+	do
+		if test x"$host" = x"$device"
+		then
+			NOTFOUND=false
+			break
+		fi
+	done
+	if $NOTFOUND
+	then
+		printf "Unknown host: '%s'\n" "$host" >&2
+		ANYNOTFOUND=true
+	fi
+done
+if $ANYNOTFOUND
+then
+	usage
+fi
+
+SERVICES="$(commasplit "$3")"
+
+if test -z "$SERVICES"
+then
+	usage No 'service(s)' given
+fi
+
+for host in $HOSTS
+do
+	for service in $SERVICES
+	do
+		printf '### %s: service %s %s\n' "$host" "$service" "$COMMAND"
+		ssh "$host" service "$service" "$COMMAND"
+	done
+done
+
