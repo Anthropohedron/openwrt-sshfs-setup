@@ -4,7 +4,7 @@ DEVICES:=$(wildcard [a-z]*)
 MOUNTED:=$(subst /,,$(dir $(wildcard [a-z]*/.git)))
 NOTMOUNTED:=$(subst /,,$(dir $(wildcard [a-z]*/.unmounted)))
 
-.PHONY: mount umount mounted ssh versions new reload_%
+.PHONY: mount umount mounted ssh board versions new reload_%
 
 mount: $(addsuffix /.git,${NOTMOUNTED})
 
@@ -31,6 +31,9 @@ status:
 ssh:
 	@test -n "${TODO}" || ( echo '*** You must provide TODO ***' && false )
 	@for d in ${DEVICES}; do ssh $$d ${TODO} | sed 's/^/'$$d': /' ; done
+
+board: TODO = ubus call system board
+board: ssh
 
 versions: TODO = grep VERSION= /etc/os-release
 versions: ssh
